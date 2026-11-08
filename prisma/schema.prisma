@@ -1,15 +1,124 @@
 generator client {
-  provider = "prisma-client-js"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
 }
 
 datasource db {
   provider = "mysql"
-  url      = env("DATABASE_URL")
 }
 
-model Example {
-  id        Int      @id @default(autoincrement())
-  name      String   @db.VarChar(191)
+enum DeviceType {
+  PC
+  ROUTER
+  MODEM
+  MOBILE
+  OTHER
+}
+
+enum DeviceStatus {
+  online
+  offline
+  unknown
+}
+
+enum CommandType {
+  DISCOVER
+  PING_DEVICES
+  WOL
+}
+
+enum CommandStatus {
+  pending
+  claimed
+  success
+  failed
+}
+
+model Admin {
+  id           String    @id @default("singleton") @db.VarChar(32)
+  email        String    @unique @db.VarChar(191)
+  passwordHash String    @db.VarChar(255)
+  createdAt    DateTime  @default(now())
+  sessions     Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid()) @db.VarChar(30)
+  tokenHash String   @unique @db.Char(64)
+  adminId   String   @db.VarChar(32)
+  expiresAt DateTime
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+}
+
+model Agent {
+  id           String        @id @default(cuid()) @db.VarChar(30)
+  name         String        @db.VarChar(120)
+  platform     String        @db.VarChar(32)
+  tokenHash    String        @unique @db.Char(64)
+  lastSeenAt   DateTime?
+  lastProbeAt  DateTime?
+  createdAt    DateTime      @default(now())
+  commands     WakeCommand[]
+
+  @@index([lastSeenAt])
+}
+
+model PairingCode {
+  id        String    @id @default(cuid()) @db.VarChar(30)
+  codeHash  String    @unique @db.Char(64)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([expiresAt, usedAt])
+}
+
+model Device {
+  id               String       @id @default(cuid()) @db.VarChar(30)
+  name             String       @db.VarChar(191)
+  description      String?      @db.VarChar(500)
+  color            String       @default("#246BFD") @db.Char(7)
+  hostname         String?      @db.VarChar(191)
+  ip               String?      @db.VarChar(45)
+  port             Int?
+  mac              String?      @unique @db.VarChar(17)
+  type             DeviceType   @default(OTHER)
+  os               String?      @db.VarChar(80)
+  osConfidence     String?      @db.VarChar(16)
+  typeConfidence   String?      @db.VarChar(16)
+  status           DeviceStatus @default(unknown)
+  missedProbes     Int          @default(0)
+  lastSeenAt       DateTime?
+  broadcastAddress String?      @db.VarChar(45)
+  wolEnabled       Boolean      @default(false)
+  wolPort          Int          @default(9)
+  approved         Boolean      @default(false)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  commands         WakeCommand[]
+
+  @@index([ip])
+  @@index([approved, status])
+}
+
+model WakeCommand {
+  id          String        @id @default(cuid()) @db.VarChar(30)
+  type        CommandType
+  status      CommandStatus @default(pending)
+  deviceId    String?       @db.VarChar(30)
+  agentId     String?       @db.VarChar(30)
+  payload     Json?
+  message     String?       @db.VarChar(500)
+  createdAt   DateTime      @default(now())
+  claimedAt   DateTime?
+  completedAt DateTime?
+  device      Device?       @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  agent       Agent?        @relation(fields: [agentId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([agentId, status])
 }

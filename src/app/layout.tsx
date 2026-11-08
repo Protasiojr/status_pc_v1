@@ -4,14 +4,19 @@ import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Status PC",
-  description: "Aplicação Next.js com Prisma e MySQL",
+  title: "Status PC — Rede sob controle",
+  description: "Monitore sua rede local e acorde seus computadores com Wake-on-LAN.",
+  applicationName: "Status PC",
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Status PC" },
+  formatDetection: { telephone: false },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="pt-BR">
       <head>
+        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/icon.svg" />
         <link
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
           rel="stylesheet"
@@ -20,7 +25,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         />
         <link
           rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css"
+          href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.2/font/bootstrap-icons.min.css"
         />
       </head>
       <body>{children}</body>
