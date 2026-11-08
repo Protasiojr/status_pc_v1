@@ -277,7 +277,8 @@ export async function discoverDevices(cidr?: string): Promise<DeviceCandidate[]>
 export async function checkKnownDevices(devices: KnownDevice[]): Promise<StatusReport[]> {
   return mapConcurrent(devices, SCAN_CONCURRENCY, async (device) => {
     const response = await ping(device.ip);
-    const osGuess = inferOs(response.ttl);
+    // Keep the periodic health check lightweight; discovery performs the TCP fingerprinting.
+    const osGuess = inferOs(response.ttl, new Set(), false, false, device.hostname ?? null);
     return {
       ...(device.id || device.deviceId ? { id: device.id || device.deviceId } : {}),
       mac: device.mac,

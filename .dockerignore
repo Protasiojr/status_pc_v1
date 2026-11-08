@@ -1,0 +1,13 @@
+node_modules
+.next
+.git
+.env
+.env.*
+!.env.example
+src/generated/prisma
+agent/node_modules
+agent/dist
+agent/.data
+tests
+coverage
+npm-debug.log*

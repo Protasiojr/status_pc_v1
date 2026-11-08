@@ -35,3 +35,30 @@
 .device-modal textarea:focus{border-color:#87aaff;box-shadow:0 0 0 3px #246bfd15}
 .device-modal textarea::placeholder{color:#b0b9c6}
 .field-hint{color:#8b97a8;font-size:10px;font-weight:400;text-align:right}
+.device-actions{display:flex;align-items:center;gap:1px;margin-left:3px;flex:none}
+.device-actions .icon-button{width:27px;height:27px;border-radius:7px;font-size:12px}
+.device-actions .danger-action{color:#b7656b}
+.device-actions .danger-action:hover{background:#fff0f1;color:#a63d46}
+.detail-title{display:flex;align-items:center;gap:12px;min-width:0}
+.detail-title h2{overflow-wrap:anywhere}
+.detail-description{margin:0 0 18px;padding:12px 13px;border-radius:9px;background:#f7f9fc;color:#65748a;font-size:12px;line-height:1.6}
+.detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px;border-top:1px solid #edf0f4}
+.detail-grid>div{min-width:0;display:grid;gap:4px;padding:12px 0;border-bottom:1px solid #edf0f4}
+.detail-grid>div>span{color:#8b97a8;font-size:10px}
+.detail-grid strong{overflow-wrap:anywhere;color:#38465b;font-size:12px;font-weight:650}
+.detail-status.online{color:#20845f}
+.detail-status.offline{color:#b94e55}
+.detail-status.unknown{color:#788496}
+.detail-color strong{display:flex;align-items:center;gap:7px}
+.detail-color i{width:15px;height:15px;border:1px solid #00000018;border-radius:5px}
+.detail-actions{flex-wrap:wrap;justify-content:flex-end}
+.detail-actions .danger-button{margin-right:auto}
+.danger-button{border-color:#f1d4d6;background:#fff7f7;color:#a63d46}
+.danger-button:hover{border-color:#e9b7bb;background:#fff0f1;color:#922e38}
+.confirm-modal{width:min(430px,100%);text-align:center}
+.confirm-icon{width:48px;height:48px;display:grid;place-items:center;margin:3px auto 14px;border-radius:15px;background:#fff0f1;color:#b44a52;font-size:20px}
+.confirm-modal h2{margin:0;font:800 20px Manrope,sans-serif;letter-spacing:-.03em}
+.confirm-modal>p{margin:9px 0 0;color:#788598;font-size:12px;line-height:1.6}
+.confirm-modal .modal-actions{justify-content:center}
+.confirm-modal .button{flex:1}
+@media(max-width:480px){.detail-grid{grid-template-columns:1fr}.detail-actions .danger-button{margin-right:0}.confirm-modal .modal-actions{gap:5px}.confirm-modal .button{padding:0 8px;font-size:10px}}

@@ -72,6 +72,8 @@ export default function Home() {
   const [setupToken, setSetupToken] = useState("");
   const [deviceModal, setDeviceModal] = useState(false);
   const [editing, setEditing] = useState<Device | null>(null);
+  const [detailsDevice, setDetailsDevice] = useState<Device | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Device | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [pairCode, setPairCode] = useState<{ code: string; expiresAt: string } | null>(null);
   const [filter, setFilter] = useState("all");
@@ -187,6 +189,7 @@ export default function Home() {
 
   function openNewDevice() { setEditing(null); setForm(emptyForm); setDeviceModal(true); }
   function openEdit(device: Device) {
+    setDetailsDevice(null);
     setEditing(device);
     setForm({ name: device.name, description: device.description || "", color: device.color || defaultDeviceColor, hostname: device.hostname || "", ip: device.ip || "", port: device.port == null ? "" : String(device.port), mac: device.mac || "", type: device.type, os: device.os || "", broadcastAddress: device.broadcastAddress || "", wolEnabled: device.wolEnabled, wolPort: String(device.wolPort || 9) });
     setDeviceModal(true);
@@ -216,20 +219,36 @@ export default function Home() {
     finally { setBusy(""); }
   }
 
-  async function deviceAction(device: Device, action: "approve" | "wake" | "delete") {
+  async function deviceAction(device: Device, action: "approve" | "wake") {
     setBusy(`${action}-${device.id}`); setNotice(null);
     try {
       if (action === "approve") await api(`/api/devices/${device.id}`, { method: "PATCH", body: JSON.stringify({ approved: true }) });
       if (action === "wake") await api(`/api/devices/${device.id}/wake`, { method: "POST", body: JSON.stringify({}) });
-      if (action === "delete") {
-        if (!window.confirm(`Remover ${device.name} da lista?`)) return;
-        await api(`/api/devices/${device.id}`, { method: "DELETE" });
-      }
       if (action === "wake") setNotice({ kind: "success", text: `Solicitação Wake-on-LAN enfileirada para o agente atender ${device.name}.` });
-      else setNotice({ kind: "success", text: action === "approve" ? `${device.name} adicionado ao monitoramento.` : `${device.name} removido.` });
+      else setNotice({ kind: "success", text: `${device.name} adicionado ao monitoramento.` });
       await refresh();
     } catch (error) { setNotice({ kind: "error", text: error instanceof Error ? error.message : "A ação não foi concluída." }); }
     finally { setBusy(""); }
+  }
+
+  async function confirmDeleteDevice() {
+    if (!deleteTarget) return;
+    const device = deleteTarget;
+    setBusy(`delete-${device.id}`); setNotice(null);
+    try {
+      await api(`/api/devices/${device.id}`, { method: "DELETE" });
+      setDeleteTarget(null);
+      setDetailsDevice(null);
+      setNotice({ kind: "success", text: `${device.name} removido.` });
+      await refresh();
+    } catch (error) {
+      setNotice({ kind: "error", text: error instanceof Error ? error.message : "Não foi possível remover o dispositivo." });
+    } finally { setBusy(""); }
+  }
+
+  function requestDelete(device: Device) {
+    setDetailsDevice(null);
+    setDeleteTarget(device);
   }
 
   if (loading || configured === null) {
@@ -283,7 +302,7 @@ export default function Home() {
         <div className="section-heading"><div><h2>Dispositivos</h2><p>Equipamentos encontrados e acompanhados na sua rede.</p></div><button className="button ghost" onClick={() => void refresh(true)}><Icon name="arrow-clockwise" /> Atualizar</button></div>
         <div className="device-toolbar"><div className="filter-tabs"><button className={filter === "all" ? "selected" : ""} onClick={() => setFilter("all")}>Todos <span>{devices.length}</span></button><button className={filter === "online" ? "selected" : ""} onClick={() => setFilter("online")}>Online <span>{onlineCount}</span></button><button className={filter === "offline" ? "selected" : ""} onClick={() => setFilter("offline")}>Offline <span>{offlineCount}</span></button>{pendingCount > 0 && <button className={filter === "pending" ? "selected" : ""} onClick={() => setFilter("pending")}>Revisar <span>{pendingCount}</span></button>}</div><div className="device-search"><Icon name="search" /><input placeholder="Buscar dispositivo" aria-label="Buscar dispositivo" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} /></div></div>
         {loading ? <div className="empty-state"><div className="spinner-border text-primary" role="status" /><p>Carregando dispositivos…</p></div> : visibleDevices.length === 0 ? <div className="empty-state"><div className="empty-icon"><Icon name={devices.length ? "search" : "hdd-network"} /></div><h3>{devices.length ? "Nenhum resultado" : "Sua rede ainda está vazia"}</h3><p>{devices.length ? "Tente outro filtro ou busca." : "Faça uma busca na rede ou cadastre um dispositivo manualmente para começar."}</p>{devices.length === 0 && <div className="empty-actions"><button className="button secondary" onClick={() => void startScan()}><Icon name="broadcast-pin" /> Buscar na rede</button><button className="button primary" onClick={openNewDevice}><Icon name="plus-lg" /> Adicionar dispositivo</button></div>}</div> : <div className="device-grid">{visibleDevices.map((device) => <article className={`device-card ${!device.approved ? "pending-card" : ""}`} key={device.id}>
-          <div className="device-card-head"><DeviceGlyph type={device.type} color={device.color} /><span className={`device-status ${device.status}`}><span />{device.status === "online" ? "Online" : device.status === "offline" ? "Offline" : "Sem resposta"}</span><button className="icon-button card-menu" onClick={() => openEdit(device)} aria-label={`Editar ${device.name}`}><Icon name="three-dots" /></button></div>
+          <div className="device-card-head"><DeviceGlyph type={device.type} color={device.color} /><span className={`device-status ${device.status}`}><span />{device.status === "online" ? "Online" : device.status === "offline" ? "Offline" : "Sem resposta"}</span><div className="device-actions"><button className="icon-button" onClick={() => setDetailsDevice(device)} aria-label={`Ver detalhes de ${device.name}`} title="Ver detalhes"><Icon name="eye" /></button><button className="icon-button" onClick={() => openEdit(device)} aria-label={`Editar ${device.name}`} title="Editar"><Icon name="pencil" /></button><button className="icon-button danger-action" onClick={() => requestDelete(device)} aria-label={`Remover ${device.name}`} title="Remover"><Icon name="trash3" /></button></div></div>
           <h3>{device.name || device.hostname || "Dispositivo sem nome"}</h3><p className="device-subtitle">{typeLabels[device.type]}{confidenceLabel(device.typeConfidence) && <span> · {confidenceLabel(device.typeConfidence)} confiança</span>}{device.os ? ` · ${device.os}` : ""}{device.osConfidence === "low" ? " · sistema estimado" : ""}</p>
           {device.description && <p className="device-description">{device.description}</p>}
           <div className="device-details"><span><Icon name="globe2" /> {device.ip || "IP não identificado"}</span>{device.port !== null && <span><Icon name="ethernet" /> Porta {device.port}</span>}<span><Icon name="diagram-3" /> {device.mac || "MAC não identificado"}</span>{device.type === "PC" && device.wolEnabled && <span><Icon name="broadcast" /> WOL · UDP {device.wolPort}</span>}</div>
@@ -312,5 +331,35 @@ export default function Home() {
           </div>
           <div className="modal-actions"><button type="button" className="button ghost" onClick={() => setDeviceModal(false)}>Cancelar</button><button className="button primary" disabled={busy === "save"}>{busy === "save" ? "Salvando…" : editing ? "Salvar alterações" : "Salvar dispositivo"}</button></div>
         </form></section></div>}
+    {detailsDevice && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDetailsDevice(null); }}><section className="device-modal details-modal" role="dialog" aria-modal="true" aria-labelledby="device-details-title">
+      <div className="modal-heading"><div className="detail-title"><DeviceGlyph type={detailsDevice.type} color={detailsDevice.color} /><div><span className="eyebrow">DETALHES DO DISPOSITIVO</span><h2 id="device-details-title">{detailsDevice.name}</h2></div></div><button className="icon-button" aria-label="Fechar detalhes" onClick={() => setDetailsDevice(null)}><Icon name="x-lg" /></button></div>
+      <p className="detail-description">{detailsDevice.description || "Sem descrição cadastrada."}</p>
+      <div className="detail-grid">
+        <div><span>Estado</span><strong className={`detail-status ${detailsDevice.status}`}>{detailsDevice.status === "online" ? "Online" : detailsDevice.status === "offline" ? "Offline" : "Sem resposta"}</strong></div>
+        <div><span>Tipo</span><strong>{typeLabels[detailsDevice.type]}{confidenceLabel(detailsDevice.typeConfidence) ? ` · confiança ${confidenceLabel(detailsDevice.typeConfidence)}` : ""}</strong></div>
+        <div><span>Sistema operacional</span><strong>{detailsDevice.os || "Não identificado"}{detailsDevice.osConfidence === "low" ? " · estimado" : ""}</strong></div>
+        <div><span>Nome na rede</span><strong>{detailsDevice.hostname || "Não identificado"}</strong></div>
+        <div><span>Endereço IP</span><strong>{detailsDevice.ip || "Não cadastrado"}</strong></div>
+        <div><span>Porta do dispositivo</span><strong>{detailsDevice.port ?? "Não cadastrada"}</strong></div>
+        <div><span>Endereço MAC</span><strong>{detailsDevice.mac || "Não identificado"}</strong></div>
+        <div><span>Última vez visto</span><strong>{detailsDevice.lastSeenAt ? new Date(detailsDevice.lastSeenAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "Ainda não detectado"}</strong></div>
+        {detailsDevice.type === "PC" && <>
+          <div><span>Wake-on-LAN</span><strong>{detailsDevice.wolEnabled ? "Habilitado" : "Desabilitado"}</strong></div>
+          {detailsDevice.wolEnabled && <div><span>Destino WOL</span><strong>{detailsDevice.broadcastAddress || "Broadcast não configurado"} · UDP {detailsDevice.wolPort}</strong></div>}
+        </>}
+        <div><span>Monitoramento</span><strong>{detailsDevice.approved ? "Aprovado" : "Aguardando revisão"}</strong></div>
+        <div className="detail-color"><span>Cor</span><strong><i style={{ backgroundColor: detailsDevice.color }} />{detailsDevice.color}</strong></div>
+      </div>
+      <div className="modal-actions detail-actions">
+        <button className="button ghost danger-button" onClick={() => requestDelete(detailsDevice)}><Icon name="trash3" /> Remover</button>
+        {detailsDevice.approved && detailsDevice.type === "PC" && detailsDevice.wolEnabled && <button className="button secondary" onClick={() => void deviceAction(detailsDevice, "wake")} disabled={!agent?.connected || busy === `wake-${detailsDevice.id}`}><Icon name="power" /> {busy === `wake-${detailsDevice.id}` ? "Enviando…" : "Ligar"}</button>}
+        <button className="button primary" onClick={() => openEdit(detailsDevice)}><Icon name="pencil" /> Editar</button>
+      </div>
+    </section></div>}
+    {deleteTarget && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && busy !== `delete-${deleteTarget.id}`) setDeleteTarget(null); }}><section className="device-modal confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="delete-device-title" aria-describedby="delete-device-description">
+      <div className="confirm-icon"><Icon name="trash3" /></div><h2 id="delete-device-title">Remover dispositivo?</h2><p id="delete-device-description">O dispositivo <strong>{deleteTarget.name}</strong> será removido da lista. Essa ação não pode ser desfeita.</p>
+      {notice?.kind === "error" && <div className="notice error" role="alert">{notice.text}</div>}
+      <div className="modal-actions"><button className="button ghost" onClick={() => setDeleteTarget(null)} disabled={busy === `delete-${deleteTarget.id}`}>Cancelar</button><button className="button danger-button" onClick={() => void confirmDeleteDevice()} disabled={busy === `delete-${deleteTarget.id}`}><Icon name="trash3" />{busy === `delete-${deleteTarget.id}` ? "Removendo…" : "Remover dispositivo"}</button></div>
+    </section></div>}
   </main>;
 }
